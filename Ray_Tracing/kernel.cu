@@ -12,12 +12,14 @@ struct Sphere
     float   r,b,g;
     float   radius;
     float   x,y,z;
-    __device__ float hit( float ox, float oy, float *n ) {
+    __device__ float hit( float ox, float oy, float *n ) 
+	{
         float dx = ox - x;
         float dy = oy - y;
-        if (dx*dx + dy*dy < radius*radius) {
-            float dz = sqrtf( radius*radius - dx*dx - dy*dy );
-            *n = dz / sqrtf( radius * radius );
+        if (dx*dx + dy*dy < radius*radius) 
+		{
+            float dz = sqrtf(radius*radius - dx*dx - dy*dy);
+            *n = dz / sqrtf(radius * radius);
             return dz + z;
         }
         return -INF;
@@ -36,11 +38,12 @@ __global__ void kernel( Sphere *s, unsigned char *ptr )
 
     float   r=0, g=0, b=0;
     float   maxz = -INF;
-    for(int i=0; i<SPHERES; i++) 
+    for(int i = 0; i < SPHERES; i++) 
 	{
         float   n;
         float   t = s[i].hit( ox, oy, &n );
-        if (t > maxz) {
+        if (t > maxz) 
+		{
             float fscale = n;
             r = s[i].r * fscale;
             g = s[i].g * fscale;
@@ -68,9 +71,9 @@ int main(void)
     DataBlock   data;
     // capture the start time
     cudaEvent_t     start, stop;
-    HANDLE_ERROR( cudaEventCreate( &start ) );
-    HANDLE_ERROR( cudaEventCreate( &stop ) );
-    HANDLE_ERROR( cudaEventRecord( start, 0 ) );
+    HANDLE_ERROR(cudaEventCreate(&start));
+    HANDLE_ERROR(cudaEventCreate( &stop));
+    HANDLE_ERROR(cudaEventRecord( start, 0));
 
     CPUBitmap bitmap( DIM, DIM, &data );
     unsigned char   *dev_bitmap;
