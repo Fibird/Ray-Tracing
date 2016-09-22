@@ -23,9 +23,13 @@ struct Sphere
         return -INF;
     }
 };
+
+
 #define SPHERES 20
 
-__global__ void kernel( Sphere *s, unsigned char *ptr ) 
+__constant__ Sphere s[SPHERES];
+
+__global__ void kernel(unsigned char *ptr ) 
 {
     // map from threadIdx/BlockIdx to pixel position
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -74,20 +78,16 @@ int main(void)
 
     CPUBitmap bitmap( DIM, DIM, &data );
     unsigned char   *dev_bitmap;
-    Sphere          *s;
-
-
+    
     // allocate memory on the GPU for the output bitmap
     HANDLE_ERROR( cudaMalloc( (void**)&dev_bitmap,
                               bitmap.image_size() ) );
-    // allocate memory for the Sphere dataset
-    HANDLE_ERROR( cudaMalloc( (void**)&s,
-                              sizeof(Sphere) * SPHERES ) );
 
     // allocate temp memory, initialize it, copy to
     // memory on the GPU, then free our temp memory
     Sphere *temp_s = (Sphere*)malloc( sizeof(Sphere) * SPHERES );
-    for (int i=0; i<SPHERES; i++) {
+    for (int i=0; i<SPHERES; i++) 
+	{
         temp_s[i].r = rnd( 1.0f );
         temp_s[i].g = rnd( 1.0f );
         temp_s[i].b = rnd( 1.0f );
@@ -96,34 +96,31 @@ int main(void)
         temp_s[i].z = rnd( 1000.0f ) - 500;
         temp_s[i].radius = rnd( 100.0f ) + 20;
     }
-    HANDLE_ERROR( cudaMemcpy( s, temp_s,
-                                sizeof(Sphere) * SPHERES,
-                                cudaMemcpyHostToDevice ) );
-    free( temp_s );
+	HANDLE_ERROR(cudaMemcpyToSymbol(s, temp_s, sizeof(Sphere) * SPHERES));
+    free(temp_s);
 
     // generate a bitmap from our sphere data
-    dim3    grids(DIM/16,DIM/16);
-    dim3    threads(16,16);
-    kernel<<<grids,threads>>>( s, dev_bitmap );
+    dim3    grids(DIM/16, DIM/16);
+    dim3    threads(16, 16);
+    kernel<<<grids,threads>>>(dev_bitmap);
 
     // copy our bitmap back from the GPU for display
-    HANDLE_ERROR( cudaMemcpy( bitmap.get_ptr(), dev_bitmap,
+    HANDLE_ERROR(cudaMemcpy( bitmap.get_ptr(), dev_bitmap,
                               bitmap.image_size(),
-                              cudaMemcpyDeviceToHost ) );
+                              cudaMemcpyDeviceToHost));
 
     // get stop time, and display the timing results
-    HANDLE_ERROR( cudaEventRecord( stop, 0 ) );
-    HANDLE_ERROR( cudaEventSynchronize( stop ) );
+    HANDLE_ERROR(cudaEventRecord(stop, 0));
+    HANDLE_ERROR(cudaEventSynchronize(stop));
     float   elapsedTime;
-    HANDLE_ERROR( cudaEventElapsedTime( &elapsedTime,
-                                        start, stop ) );
+    HANDLE_ERROR(cudaEventElapsedTime(&elapsedTime,
+                                        start, stop));
     printf( "Time to generate:  %3.1f ms\n", elapsedTime );
 
-    HANDLE_ERROR( cudaEventDestroy( start ) );
-    HANDLE_ERROR( cudaEventDestroy( stop ) );
+    HANDLE_ERROR(cudaEventDestroy(start));
+    HANDLE_ERROR(cudaEventDestroy(stop));
 
-    HANDLE_ERROR( cudaFree( dev_bitmap ) );
-    HANDLE_ERROR( cudaFree( s ) );
+    HANDLE_ERROR(cudaFree(dev_bitmap));
 
     // display
     bitmap.display_and_exit();
